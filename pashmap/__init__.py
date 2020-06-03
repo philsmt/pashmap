@@ -7,7 +7,7 @@
 # All rights reserved.
 
 from .context import LocalContext, ThreadContext, ProcessContext  # noqa
-from .target import SequenceTarget, ExtraDataTarget  # noqa
+from .functor import SequenceFunctor, ExtraDataFunctor  # noqa
 
 
 _default_context = LocalContext()

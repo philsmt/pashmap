@@ -11,13 +11,13 @@ from collections.abc import Sequence
 import numpy as np
 
 
-class MapTarget:
-    """Target for map operation.
+class Functor:
+    """Mappable object.
 
-    This object wraps the value processed in a map operation to control
-    its distribution into individual work units and then iterating over
-    the entries in each work unit. The simplest target type is
-    SequenceTarget, which distributes a set of indices to each worker
+    In functional programming, a functor is basically something that can
+    be mapped over. This interface specifically provides the machinery
+    to distribute a share of the value to each worker. The simplest
+    functor is SequenceFunctor, which assigns a set of indices to worker
     and then iterates over the assigned indices in its body.
 
     If a custom type extends this class and implements the wrap
@@ -25,69 +25,71 @@ class MapTarget:
     passed to a map call.
     """
 
-    _target_types = []
+    _functor_types = []
 
     @classmethod
     def __init_subclass__(cls):
-        cls._target_types.append(cls)
+        cls._functor_types.append(cls)
 
     @classmethod
-    def get_default_target(cls, value):
-        """Get default map target.
+    def try_wrap(cls, value):
+        """Attempt to wrap a value in a functor.
 
         Args:
             value (Any): Value to wrap for map operation.
 
         Returns:
-            (MapTarget) Target object wrapping the given value.
+            (Functor) Functor wrapping the given value or the same value
+                if already a subtype of Functor.
 
         Raises:
-            ValueError: If no or more than one default target types can
-                be found.
+            ValueError: If no or more than one default functor types
+                could be applied.
         """
 
         if isinstance(value, cls):
             return value
 
-        target = None
+        functor = None
 
-        for target_type in cls._target_types:
-            cur_target = target_type.wrap(value)
+        for functor_type in cls._functor_types:
+            cur_functor = functor_type.wrap(value)
 
-            if cur_target is not None:
-                if target is not None:
-                    raise ValueError('ambiguous default target requires an '
-                                     'explicit map target')
-                target = cur_target
+            if cur_functor is not None:
+                if functor is not None:
+                    raise ValueError('default functor is ambiguous')
 
-        if target is None:
-            raise ValueError(f'no default target for {type(value)}')
+                functor = cur_functor
 
-        return target
+        if functor is None:
+            raise ValueError(f'no default functor for {type(value)}')
+
+        return functor
 
     @classmethod
     def wrap(self, value):
-        """Wrap value in this target type, if possible.
+        """Wrap value in this functor type, if possible.
 
         Args:
             value (Any): Value to wrap for map operation.
 
         Returns:
-            (MapTarget) Target object if wrapping is possible or None.
+            (Functor) Functor if wrapping is possible or None.
         """
 
         return
 
     def split(self, num_workers):
-        """Split this target into work units.
+        """Split this functor into work units.
 
         The values contained in the returned Iterable are passed to this
-        target's iterate method later on. It may consist of any value
+        functor's iterate method later on. It may consist of any value
         suitable to describe each work unit, e.g. an iterable of indices
         of a sequence.
 
         Args:
-            num_workers (int): Number of workers processing this target.
+            num_workers (int): Number of workers processing this
+                functor.
 
         Returns:
             (Iterable) Iterable of elements for each work unit.
@@ -96,11 +98,11 @@ class MapTarget:
         raise NotImplementedError('split')
 
     def iterate(self, share):
-        """Iterate over a share of this target.
+        """Iterate over a share of this functor.
 
         Args:
-            share (Any): Element of the Iterable returned by
-                :method:split to iterate over.
+            share (Any): Element of the Iterable returned by to iterate
+                over.
 
         Returns:
             None
@@ -109,20 +111,20 @@ class MapTarget:
         raise NotImplementedError('iterate')
 
 
-class SequenceTarget(MapTarget):
-    """Map target for a sequence.
+class SequenceFunctor(Functor):
+    """Functor wrapping a sequence.
 
-    This target wraps any indexable collection, e.g. list, tuples, numpy
-    ndarrays or any other type implementing __getitem__. The kernel is
-    passed the current index and sequence value at that index.
+    This functor wraps any indexable collection, e.g. list, tuples,
+    numpy ndarrays or any other type implementing __getitem__. The
+    kernel is passed the current index and sequence value at that index.
 
     Note that only ndarray and types implementing the Sequence interface
-    are currently automatically detected to use this target type. Other
+    are currently automatically detected to use this functor type. Other
     types, e.g. xarray's DataArray, need to be wrapped manually.
     """
 
     def __init__(self, sequence):
-        """Initialize this sequence target.
+        """Initialize this sequence functor.
 
         Args:
             sequence (Sequence): Sequence to process.
@@ -144,13 +146,13 @@ class SequenceTarget(MapTarget):
             yield index, self.sequence[index]
 
 
-# Ideas for targets: xarray.DataArray/Dataset, pandas
+# Ideas for wrapping functors: xarray.DataArray/Dataset, pandas
 
 
-class ExtraDataTarget(MapTarget):
-    """Map target for EXtra-data DataCollection.
+class ExtraDataFunctor(Functor):
+    """Functor for EXtra-data DataCollection.
 
-    This target wraps an EXtra-data DataCollection and performs the map
+    This functor wraps an EXtra-data DataCollection and performs the map
     operation over its trains. The kernel is passed the current train's
     index in the collection, the train ID and the data mapping.
     """
@@ -159,7 +161,7 @@ class ExtraDataTarget(MapTarget):
         self.dc = dc
 
         import extra_data as xd
-        ExtraDataTarget.xd = xd
+        ExtraDataFunctor.xd = xd
 
     @classmethod
     def wrap(cls, value):
@@ -179,7 +181,7 @@ class ExtraDataTarget(MapTarget):
         return np.array_split(np.arange(len(self.dc.train_ids)), num_workers)
 
     def iterate(self, indices):
-        subdc = self.dc.select_trains(ExtraDataTarget.xd.by_index[indices])
+        subdc = self.dc.select_trains(ExtraDataFunctor.xd.by_index[indices])
 
         # Close all file handles inherited from the parent collection
         # to force re-opening them in each worker process.

@@ -15,7 +15,7 @@ from threading import local
 
 import numpy as np
 
-from .target import MapTarget
+from .functor import Functor
 
 
 class MapContext:
@@ -27,7 +27,9 @@ class MapContext:
 
     As some of these environments may require special memory semantics,
     the context also provides a method of allocating ndarrays. The only
-    abstract method required by an implementation is map.
+    abstract method required by an implementation is map. It is
+    recommended to use the staticmethod run_worker in this type for the
+    actual mapping loop in each worker.
     """
 
     def __init__(self, num_workers):
@@ -83,17 +85,18 @@ class MapContext:
         else:
             return self.array((self.num_workers,) + tuple(shape), dtype)
 
-    def map(self, kernel, target):
-        """Apply kernel to each element in the target.
+    def map(self, function, functor):
+        """Apply a function to a functor.
 
-        This method performs the actual map operation. The target may
-        either be an explicit MapTarget object or any other supported
-        type, which can be wrapped into a default target object.
+        This method performs the map operation, applying the function to
+        each element of the functor. The functor may either be an
+        explicit Functor object or any other supported type, which can
+        be wrapped into a default functor.
 
         Args:
-            kernel (Callable): Kernel function to apply.
-            target (MapTarget or Any): Target object to apply to or
-                any supported type to be wrapped automatically.
+            function (Callable): Kernel function to map with.
+            functor (Functor or Any): Functor to map over or any type
+                with automatic wrapping support.
 
         Returns:
             None
@@ -102,43 +105,43 @@ class MapContext:
         raise NotImplementedError('map')
 
     @staticmethod
-    def run_worker(kernel, target, share, worker_id):
+    def run_worker(function, functor, share, worker_id):
         """Main worker loop.
 
         This staticmethod contains the actual inner loop for a worker,
-        i.e. iterating over the target and calling the kernel function.
+        i.e. iterating over the functor and calling the kernel function.
 
         Subtypes may call this method after sorting out the required
         parameters through their specific machinery.
 
         Args:
-            kernel (Callable): Kernel function to apply.
-            target (MapTarget): Target object to apply to.
-            share (Any): Share of the target for this worker.
-            worker_id (int): Identification of this worker.
+            function (Callable): Kernel function to map with.
+            functor (Functor): Functor to map over.
+            share (Any): Functor's share assigned to this worker.
+            worker_id (int): Identification of this worker. All passed
+                values must be between 0 and num_workers-1.
 
         Returns:
             None
         """
 
-        for entry in target.iterate(share):
-            kernel(worker_id, *entry)
+        for entry in functor.iterate(share):
+            function(worker_id, *entry)
 
 
 class LocalContext(MapContext):
     """Local map context.
 
-    Runs the map operation directly in the same process and thread.
+    Runs the map operation directly in the same process and thread
+    without any actual parallelism.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(num_workers=1)
 
-    def map(self, kernel, target):
-        if not isinstance(target, MapTarget):
-            target = MapTarget.get_default_target(target)
-
-        self.run_worker(kernel, target, next(iter(target.split(1))), 0)
+    def map(self, function, functor):
+        functor = Functor.try_wrap(functor)
+        self.run_worker(function, functor, next(iter(functor.split(1))), 0)
 
 
 class PoolContext(MapContext):
@@ -156,30 +159,29 @@ class PoolContext(MapContext):
 
         super().__init__(num_workers=num_workers)
 
-    def map(self, kernel, target, pool_cls):
-        """Apply kernel to each element in the target.
+    def map(self, function, functor, pool_cls):
+        """Apply a function to a functor.
 
         Incomplete map method to be called by a subtype.
 
         Args:
-            kernel (Callable): Kernel function to apply.
-            target (MapTarget): Target object to apply to.
+            function (Callable): Kernel function to map with.
+            functor (Functor or Any): Functor to map over or any type
+                with automatic wrapping support.
             pool_cls (type): Pool implementation to use.
 
         Returns:
             None
         """
 
-        self.kernel = kernel
+        self.function = function
+        functor = Functor.try_wrap(functor)
 
         for worker_id in range(self.num_workers):
             self.id_queue.put(worker_id)
 
-        if not isinstance(target, MapTarget):
-            target = MapTarget.get_default_target(target)
-
-        with pool_cls(self.num_workers, self.init_worker, (target,)) as p:
-            p.map(self.run_worker, target.split(self.num_workers))
+        with pool_cls(self.num_workers, self.init_worker, (functor,)) as p:
+            p.map(self.run_worker, functor.split(self.num_workers))
 
 
 class ThreadContext(PoolContext):
@@ -192,15 +194,15 @@ class ThreadContext(PoolContext):
         self.worker_storage = local()
         self.id_queue = Queue()
 
-    def map(self, kernel, target):
-        super().map(kernel, target, ThreadPool)
+    def map(self, function, functor):
+        super().map(function, functor, ThreadPool)
 
-    def init_worker(self, target):
+    def init_worker(self, functor):
         self.worker_storage.worker_id = self.id_queue.get()
-        self.worker_storage.target = target
+        self.worker_storage.functor = functor
 
     def run_worker(self, share):
-        super().run_worker(self.kernel, self.worker_storage.target, share,
+        super().run_worker(self.function, self.worker_storage.functor, share,
                            self.worker_storage.worker_id)
 
 
@@ -243,22 +245,22 @@ class ProcessContext(PoolContext):
         return np.frombuffer(memoryview(buf)[:n_bytes],
                              dtype=dtype).reshape(shape)
 
-    def map(self, kernel, target):
-        super().map(kernel, target, self.mp_ctx.Pool)
+    def map(self, function, functor):
+        super().map(function, functor, self.mp_ctx.Pool)
 
-    def init_worker(self, target):
+    def init_worker(self, functor):
         # Save reference in process-local copy
         self.__class__._instance = self
 
         self.worker_id = self.id_queue.get()
-        self.target = target
+        self.functor = functor
 
     @classmethod
     def run_worker(cls, share):
         # map is a classmethod here and fetches its process-local
         # instance, as the instance in the parent process is not
-        # actually part of the execution
+        # actually part of the execution.
 
         self = cls._instance
-        super(cls, self).run_worker(self.kernel, self.target, share,
+        super(cls, self).run_worker(self.function, self.functor, share,
                                     self.worker_id)
