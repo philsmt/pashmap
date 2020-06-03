@@ -6,11 +6,11 @@
 # Copyright (c) 2020, European X-Ray Free-Electron Laser Facility GmbH.
 # All rights reserved.
 
-from .context import LocalContext, ThreadContext, ProcessContext  # noqa
+from .context import SerialContext, ThreadContext, ProcessContext  # noqa
 from .functor import SequenceFunctor, ExtraDataFunctor  # noqa
 
 
-_default_context = LocalContext()
+_default_context = SerialContext()
 
 
 def get_default_context():
@@ -34,7 +34,7 @@ def set_default_context(ctx_or_method, *args, **kwargs):
     Args:
         ctx_or_method (MapContext or str): New map context either
             directly or the parallelization method as a string, which
-            may either be 'local', 'threads' or 'processes'
+            may either be 'serial', 'threads' or 'processes'
 
         Any further arguments are passed to the created map context
         object if specified as a string.
@@ -44,12 +44,12 @@ def set_default_context(ctx_or_method, *args, **kwargs):
     """
 
     if isinstance(ctx_or_method, str):
-        if ctx_or_method == 'processes':
-            ctx_cls = ProcessContext
+        if ctx_or_method == 'serial':
+            ctx_cls = SerialContext
         elif ctx_or_method == 'threads':
             ctx_cls = ThreadContext
-        elif ctx_or_method == 'local':
-            ctx_cls = LocalContext
+        elif ctx_or_method == 'processes':
+            ctx_cls = ProcessContext
         else:
             raise ValueError('invalid map method')
 

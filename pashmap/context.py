@@ -129,8 +129,8 @@ class MapContext:
             function(worker_id, *entry)
 
 
-class LocalContext(MapContext):
-    """Local map context.
+class SerialContext(MapContext):
+    """Serial map context.
 
     Runs the map operation directly in the same process and thread
     without any actual parallelism.
