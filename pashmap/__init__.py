@@ -10,7 +10,7 @@ from .context import SerialContext, ThreadContext, ProcessContext  # noqa
 from .functor import SequenceFunctor, ExtraDataFunctor  # noqa
 
 
-_default_context = SerialContext()
+_default_context = ProcessContext()
 
 
 def get_default_context():
