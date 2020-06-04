@@ -6,6 +6,9 @@
 # Copyright (c) 2020, European X-Ray Free-Electron Laser Facility GmbH.
 # All rights reserved.
 
+__version__ = '1.0.0'
+
+
 from .context import SerialContext, ThreadContext, ProcessContext  # noqa
 from .functor import SequenceFunctor, ExtraDataFunctor  # noqa
 

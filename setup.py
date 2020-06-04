@@ -8,6 +8,7 @@
 # All rights reserved.
 
 from pathlib import Path
+import re
 
 from setuptools import setup, find_packages
 
@@ -16,9 +17,28 @@ with open(Path(__file__).parent / 'README.md', 'r') as f:
     long_description = f.read()
 
 
+with open(Path(__file__).parent / 'pashmap' / '__init__.py') as f:
+    generic_pattern = re.compile(
+        r'^__version__ = \'(\d+\.\d+\.\d[a-z]*\d*)\'', re.M)
+    hotfix_pattern = re.compile(
+        r'^__version__ = \'(\d.){3}\d\'', re.M)
+
+    for line in f:
+        m = generic_pattern.search(line)
+
+        if m is None:
+            m = hotfix_pattern.search(line)
+
+        if m is not None:
+            version = m.group(1)
+            break
+    else:
+        raise RuntimeError('unable to find version string')
+
+
 setup(
     name='pashmap',
-    version='1.0.0a0',
+    version=version,
     description='Tools to perform PArallelized SHared memory MAP '
                 'operations on large data sets using zero copies.',
     long_description=long_description,
