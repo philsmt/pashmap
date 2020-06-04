@@ -114,17 +114,14 @@ class Functor:
 class SequenceFunctor(Functor):
     """Functor wrapping a sequence.
 
-    This functor wraps any indexable collection, e.g. list, tuples,
-    numpy ndarrays or any other type implementing __getitem__. The
-    kernel is passed the current index and sequence value at that index.
-
-    Note that only ndarray and types implementing the Sequence interface
-    are currently automatically detected to use this functor type. Other
-    types, e.g. xarray's DataArray, need to be wrapped manually.
+    This functor can wrap any indexable collection, e.g. list, tuples,
+    or any other type implementing __getitem__. It automatically wraps
+    any value implementing the collections.abc.Sequence type. The kernel
+    is passed the current index and sequence value at that index.
     """
 
     def __init__(self, sequence):
-        """Initialize this sequence functor.
+        """Initialize a sequence functor.
 
         Args:
             sequence (Sequence): Sequence to process.
@@ -134,8 +131,7 @@ class SequenceFunctor(Functor):
 
     @classmethod
     def wrap(cls, value):
-        if isinstance(value, (Sequence, np.ndarray)):
-            # Note that ndarray does NOT implement Sequence itself!
+        if isinstance(value, Sequence):
             return cls(value)
 
     def split(self, num_workers):
@@ -144,6 +140,37 @@ class SequenceFunctor(Functor):
     def iterate(self, indices):
         for index in indices:
             yield index, self.sequence[index]
+
+
+class NdarrayFunctor(SequenceFunctor):
+    """Functor wrapping an numpy.ndarray.
+
+    This functor extends SequenceFunctor to use additional functionality
+    provided by numpy ndarrays, e.g. iterating over specific axes and
+    more efficient indexing and should works for any array_like object
+    that supports numpy-style slicing. However, specifying an explicit
+    axis may cause conversion to an ndarray or break unexpectedly.
+    """
+
+    def __init__(self, array, axis=None):
+        """Initialize an ndarray functor.
+
+        Args:
+            array (numpy.ndarray): Array to map over.
+            axis (int, optional): Axis to map over, first axis by
+                default or if None.
+        """
+
+        self.sequence = np.swapaxes(array, 0, axis) \
+            if axis is not None else array
+
+    @classmethod
+    def wrap(cls, value):
+        if isinstance(value, np.ndarray):
+            return cls(value)
+
+    def iterate(self, indices):
+        yield from zip(indices, self.sequence[indices])
 
 
 # Ideas for wrapping functors: xarray.DataArray/Dataset, pandas

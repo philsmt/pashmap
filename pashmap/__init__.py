@@ -10,7 +10,7 @@ __version__ = '1.0.0'
 
 
 from .context import SerialContext, ThreadContext, ProcessContext  # noqa
-from .functor import SequenceFunctor, ExtraDataFunctor  # noqa
+from .functor import SequenceFunctor, NdarrayFunctor, ExtraDataFunctor  # noqa
 
 
 _default_context = ProcessContext()
