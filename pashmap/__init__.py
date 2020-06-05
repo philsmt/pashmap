@@ -74,6 +74,16 @@ def array(*args, **kwargs):
     return _default_context.array(*args, **kwargs)
 
 
+def array_like(*args, **kwargs):
+    """Allocate an array with the same shape and dtype as another.
+
+    See MapContext.array_like(). This module-level function forwards the
+    call to the default context.
+    """
+
+    return _default_context.array_like(*args, **kwargs)
+
+
 def array_per_worker(*args, **kwargs):
     """Allocate a shared array for each worker.
 

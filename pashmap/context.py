@@ -64,6 +64,18 @@ class MapContext:
 
         return np.zeros(shape, dtype=dtype)
 
+    def array_like(self, other):
+        """Allocate an array with the same shape and dtype as another.
+
+        Args:
+            other (array_like): Other array.
+
+        Returns:
+            (numpy.ndarray) Created array object.
+        """
+
+        return self.array(other.shape, other.dtype)
+
     def array_per_worker(self, shape, dtype=np.float64):
         """Allocate a shared array for each worker.
 
