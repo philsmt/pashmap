@@ -7,8 +7,37 @@
 # All rights reserved.
 
 from collections.abc import Sequence
+from importlib import import_module
 
 import numpy as np
+
+
+def import_if_type_likely(module_name, obj, type_name=None):
+    """Import a module if an object's type matches by name.
+
+    Args:
+        module_name (str): Module to import.
+        obj (Any): Object to check type of.
+        type_name (str, optional): Full qualified type name to check
+            against, only module_name is tested by default.
+
+    Returns:
+        (module or None) Imported module object or None if type does not
+            seem to match or an ImportError occured.
+    """
+
+    if type_name is not None:
+        if f'{type(obj).__module__}.{type(obj).__qualname__}' != type_name:
+            return
+    elif not type(obj).__module__.startswith(module_name):
+        return
+
+    try:
+        module_obj = import_module(module_name)
+    except ImportError:
+        return
+
+    return module_obj
 
 
 class Functor:
@@ -173,7 +202,35 @@ class NdarrayFunctor(SequenceFunctor):
         yield from zip(indices, self.sequence[indices])
 
 
-# Ideas for wrapping functors: xarray.DataArray/Dataset, pandas
+class DataArrayFunctor(NdarrayFunctor):
+    """Functor wrapping an xarray.DataArray.
+
+    This functor extends NdarrayFunctor for compatbility with xarray's
+    DataArray type, in particular dimension labels and coordinates.
+    """
+
+    def __init__(self, array, dim=None):
+        """Initialize a DataArray functor.
+
+        Args:
+            array (xarray.DataArray): Labeled array to map over.
+            dim (str, optional): Dimension to map over, first dimension
+                by default or if None.
+        """
+
+        self.sequence = array.transpose(dim, ...) \
+            if dim is not None else array
+
+    @classmethod
+    def wrap(cls, value):
+        xr = import_if_type_likely('xarray', value,
+                                   'xarray.core.dataarray.DataArray')
+
+        if xr is not None and isinstance(value, xr.DataArray):
+            return cls(value)
+
+
+# Ideas for wrapping functors: xarray.Dataset, pandas
 
 
 class ExtraDataFunctor(Functor):
@@ -192,16 +249,10 @@ class ExtraDataFunctor(Functor):
 
     @classmethod
     def wrap(cls, value):
-        if value.__class__.__name__ != 'DataCollection':
-            # Avoid importing EXtra-data if not even the name matches.
-            return
+        xd = import_if_type_likely('extra_data', value,
+                                   'extra_data.reader.DataCollection')
 
-        try:
-            import extra_data as xd
-        except ImportError:
-            return
-
-        if isinstance(value, xd.DataCollection):
+        if xd is not None and isinstance(value, xd.DataCollection):
             return cls(value)
 
     def split(self, num_workers):
