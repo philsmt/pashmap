@@ -64,7 +64,7 @@ class MapContext:
 
         return np.zeros(shape, dtype=dtype)
 
-    def reduce_array(self, shape, dtype=np.float64):
+    def array_per_worker(self, shape, dtype=np.float64):
         """Allocate a shared array for each worker.
 
         The returned array will contain an additional prepended axis

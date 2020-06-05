@@ -71,14 +71,14 @@ def array(*args, **kwargs):
     return _default_context.array(*args, **kwargs)
 
 
-def reduce_array(*args, **kwargs):
+def array_per_worker(*args, **kwargs):
     """Allocate a shared array for each worker.
 
-    See MapContext.reduce_array(). This module-level function  forwards
-    the call to the default context.
+    See MapContext.array_per_worker(). This module-level function
+    forwards the call to the default context.
     """
 
-    return _default_context.reduce_array(*args, **kwargs)
+    return _default_context.array_per_worker(*args, **kwargs)
 
 
 def map(*args, **kwargs):
