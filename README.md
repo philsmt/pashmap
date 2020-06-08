@@ -18,21 +18,24 @@ outp = pm.array(100)
 # Define a kernel function multiplying each value with 3.
 def triple_it(worker_id, index, value):
     outp[index] = 3 * value
-    
+
 # Map the kernel function.
 pm.map(triple_it, inp)
 
 # Check the result
 np.testing.assert_allclose(outp, inp*3)
 ```
-The runtime environment is controlled via a so called map context. The default context object is `LocalContext`, which does not actually parallelize anything and runs in the same process. You may either create an explicit context object and use it directly or change the default context, e.g.
+The runtime environment is controlled via a so called map context. The default
+context object is `ProcessContext`, which uses `multiprocessing.Pool` to distribute the work across several processes. The output array returned by array() resides in shared memory with this context in order to modify it by the worker processes without the need to copy anything around. This context only works on \*nix systems supporting the fork() system call, as it expects any input data to be shared.
+
+You may either create an explicit context object and use it directly or change the default context, e.g.
 
 ```python
-pm.set_default_context('processes', num_workers=4)
+pm.set_default_context('threads', num_workers=4)
 ```
-Now each map call will spawn a process pool and hand off the work. This only works on \*nix systems supporting the fork() system call, as it expects any input data to be shared. The output array returned by array() will also reside in shared memory with this context.
+There are three different context types builtin: `serial`, `threads` and `processes`.
 
-The input array passed to map() is called the map target and is automatically wrapped in a suitable MapTarget object, here SequenceTarget. This works for a number of common array and collection types, but you may also implement your own MapTarget object to wrap anything else. For example, there is built-in support for DataCollection objects from the EXtra-data toolkit accessing run files from the European XFEL facilty:
+The input array passed to map() is called a functor and automatically wrapped in a suitable `Functor` object, here `SequenceFunctor`. This works for a number of common array and collection types, but you may also implement your own `Functor` object to wrap anything else. For example, there is built-in support for `DataCollection` objects from the EXtra-data toolkit accessing run files from the European XFEL facilty:
 ```python
 def analysis_kernel(worker_id, index, train_id, data):
     # Do something with the data and save it to shared memory.
