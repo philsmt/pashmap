@@ -17,7 +17,7 @@ with open(Path(__file__).parent / 'README.md', 'r') as f:
     long_description = f.read()
 
 
-with open(Path(__file__).parent / 'pashmap' / '__init__.py') as f:
+with open(Path(__file__).parent / 'extra_pasha' / '__init__.py') as f:
     generic_pattern = re.compile(
         r'^__version__ = \'(\d+\.\d+\.\d[a-z]*\d*)\'', re.M)
     hotfix_pattern = re.compile(
@@ -37,10 +37,10 @@ with open(Path(__file__).parent / 'pashmap' / '__init__.py') as f:
 
 
 setup(
-    name='pashmap',
+    name='EXtra-pasha',
     version=version,
-    description='Tools to perform PArallelized SHared memory MAP '
-                'operations on large data sets using zero copies.',
+    description='Tools to parallelize operations on large data sets '
+                'using shared memory with zero copies.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     author='Philipp Schmidt',

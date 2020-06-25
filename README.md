@@ -1,26 +1,26 @@
-# pashmap
+# EXtra-pasha
 
-pashmap (**pa**rallelized **sh**ared memory **map**) provides tools to process data in memory in a parallelized way with an emphasis on shared memory and zero copy. Thus, it is currently limited to a single node using threads or processes. It uses the map pattern similar to Python's builtin map() function, where a Callable is applied to potentially many elements in a collection. To avoid the high cost of IPC or other communication schemes, the results are meant to be written directly to memory shared between all workers as well as the calling site.
+EXtra-pasha (**pa**rallelized **sha**red memory) provides tools to process data in memory in a parallelized way with an emphasis on shared memory and zero copy. Thus, it is currently limited to a single node using threads or processes. It uses the map pattern similar to Python's builtin map() function, where a Callable is applied to potentially many elements in a collection. To avoid the high cost of IPC or other communication schemes, the results are meant to be written directly to memory shared between all workers as well as the calling site.
 
 ## Quick guide
 
 To use it, simply import it, define your kernel function of choice and map away!
 ```python
 import numpy as np
-import pashmap as pm
+import extra_pasha as xp
 
 # Get some random input data
 inp = np.random.rand(100)
 
-# Allocate output array via pashmap.
-outp = pm.array(100)
+# Allocate output array via EXtra-pasha.
+outp = xp.array(100)
 
 # Define a kernel function multiplying each value with 3.
 def triple_it(worker_id, index, value):
     outp[index] = 3 * value
 
 # Map the kernel function.
-pm.map(triple_it, inp)
+xp.map(triple_it, inp)
 
 # Check the result
 np.testing.assert_allclose(outp, inp*3)
@@ -31,7 +31,7 @@ context object is `ProcessContext`, which uses `multiprocessing.Pool` to distrib
 You may either create an explicit context object and use it directly or change the default context, e.g.
 
 ```python
-pm.set_default_context('threads', num_workers=4)
+xp.set_default_context('threads', num_workers=4)
 ```
 There are three different context types builtin: `serial`, `threads` and `processes`.
 
@@ -41,5 +41,5 @@ def analysis_kernel(worker_id, index, train_id, data):
     # Do something with the data and save it to shared memory.
 
 run = extra_data.open_run(proposal=700000, run=1)
-pm.map(analysis_kernel, run)
+xp.map(analysis_kernel, run)
 ```

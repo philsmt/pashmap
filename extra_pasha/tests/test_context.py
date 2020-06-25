@@ -9,9 +9,9 @@
 import pytest
 
 import numpy as np
-import pashmap as pm
-from pashmap.context import MapContext
-from pashmap.functor import Functor
+import extra_pasha as xp
+from extra_pasha.context import MapContext
+from extra_pasha.functor import Functor
 
 
 @pytest.mark.parametrize(
@@ -75,7 +75,7 @@ def test_run_worker():
 
 
 @pytest.mark.parametrize(
-    'ctx', [pm, pm.SerialContext(), pm.ThreadContext(), pm.ProcessContext()],
+    'ctx', [xp, xp.SerialContext(), xp.ThreadContext(), xp.ProcessContext()],
     ids=['default', 'serial', 'thread', 'process'])
 def test_map(ctx):
     """Test map operation for each context type."""
@@ -97,21 +97,21 @@ def test_initial_default_context():
     as they change the default context!
     """
 
-    assert isinstance(pm.get_default_context(), pm.ProcessContext)
+    assert isinstance(xp.get_default_context(), xp.ProcessContext)
 
 
 def test_set_default_context_direct():
     """Test setting default context directly."""
 
-    ctx = pm.SerialContext()
-    pm.set_default_context(ctx)
+    ctx = xp.SerialContext()
+    xp.set_default_context(ctx)
 
-    assert pm.get_default_context() is ctx
+    assert xp.get_default_context() is ctx
 
 
-_context_strs = {'serial': pm.SerialContext,
-                 'threads': pm.ThreadContext,
-                 'processes': pm.ProcessContext}
+_context_strs = {'serial': xp.SerialContext,
+                 'threads': xp.ThreadContext,
+                 'processes': xp.ProcessContext}
 
 
 @pytest.mark.parametrize(
@@ -120,5 +120,5 @@ _context_strs = {'serial': pm.SerialContext,
 def test_set_default_context_string(ctx_str, expected_type):
     """Test setting default context by string."""
 
-    pm.set_default_context(ctx_str)
-    assert isinstance(pm.get_default_context(), expected_type)
+    xp.set_default_context(ctx_str)
+    assert isinstance(xp.get_default_context(), expected_type)

@@ -10,8 +10,8 @@ import pytest
 
 import numpy as np
 import xarray as xr
-import pashmap as pm
-from pashmap.functor import import_if_type_likely, Functor
+import extra_pasha as xp
+from extra_pasha.functor import import_if_type_likely, Functor
 
 
 def test_import_if_type_likely():
@@ -26,10 +26,10 @@ def test_import_if_type_likely():
 
 
 _supported_try_wrap = [
-    ([1, 2, 3], pm.SequenceFunctor),
-    ((1, 2, 3), pm.SequenceFunctor),
-    (np.arange(3), pm.NdarrayFunctor),
-    (xr.DataArray(np.arange(3)), pm.DataArrayFunctor)]
+    ([1, 2, 3], xp.SequenceFunctor),
+    ((1, 2, 3), xp.SequenceFunctor),
+    (np.arange(3), xp.NdarrayFunctor),
+    (xr.DataArray(np.arange(3)), xp.DataArrayFunctor)]
 
 
 def test_Functor_subtype_register():
@@ -67,10 +67,10 @@ def test_Functor_try_wrap_unsupported():
 
 
 _sequence_like_values = [
-    ([1, 2, 3, 4], pm.SequenceFunctor),
-    ((1, 2, 3, 4), pm.SequenceFunctor),
-    (np.arange(4)+1, pm.NdarrayFunctor),
-    (xr.DataArray(np.arange(4)+1), pm.DataArrayFunctor),
+    ([1, 2, 3, 4], xp.SequenceFunctor),
+    ((1, 2, 3, 4), xp.SequenceFunctor),
+    (np.arange(4)+1, xp.NdarrayFunctor),
+    (xr.DataArray(np.arange(4)+1), xp.DataArrayFunctor),
 ]
 
 
@@ -95,7 +95,7 @@ def test_NdarrayFunctor_axis(axis, expected_value):
 
     inp = np.arange(9).reshape(3, 3)
 
-    functor = pm.NdarrayFunctor(inp, axis=axis)
+    functor = xp.NdarrayFunctor(inp, axis=axis)
     np.testing.assert_allclose(functor.split(3), [[0], [1], [2]])
 
     _, value = next(iter(functor.iterate([0])))
@@ -111,7 +111,7 @@ def test_DataArrayFunctor_dim(dim, expected_value):
 
     inp = xr.DataArray(np.arange(9).reshape(3, 3), dims=['a', 'b'])
 
-    functor = pm.DataArrayFunctor(inp, dim=dim)
+    functor = xp.DataArrayFunctor(inp, dim=dim)
     np.testing.assert_allclose(functor.split(3), [[0], [1], [2]])
 
     _, value = next(iter(functor.iterate([0])))
