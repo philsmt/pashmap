@@ -1,6 +1,6 @@
 # EXtra-pasha
 
-EXtra-pasha (**pa**rallelized **sha**red memory) provides tools to process data in memory in a parallelized way with an emphasis on shared memory and zero copy. Thus, it is currently limited to a single node using threads or processes. It uses the map pattern similar to Python's builtin map() function, where a Callable is applied to potentially many elements in a collection. To avoid the high cost of IPC or other communication schemes, the results are meant to be written directly to memory shared between all workers as well as the calling site.
+EXtra-pasha (**pa**rallelized **sha**red memory) provides tools to process data in a parallelized way with an emphasis on shared memory and zero copy. It uses the map pattern similar to Python's builtin map() function, where a Callable is applied to potentially many elements in a collection. To avoid the high cost of IPC or other communication schemes, the results are meant to be written directly to memory shared between all workers as well as the calling site. The current implementations cover distribution across threads and processes on a single node.
 
 ## Quick guide
 
