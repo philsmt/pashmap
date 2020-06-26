@@ -18,16 +18,10 @@ with open(Path(__file__).parent / 'README.md', 'r') as f:
 
 
 with open(Path(__file__).parent / 'extra_pasha' / '__init__.py') as f:
-    generic_pattern = re.compile(
-        r'^__version__ = \'(\d+\.\d+\.\d[a-z]*\d*)\'', re.M)
-    hotfix_pattern = re.compile(
-        r'^__version__ = \'(\d.){3}\d\'', re.M)
+    pattern = re.compile(r'^__version__ = \'(\d+\.\d+\.\d[a-z]*\d*)\'', re.M)
 
     for line in f:
-        m = generic_pattern.search(line)
-
-        if m is None:
-            m = hotfix_pattern.search(line)
+        m = pattern.search(line)
 
         if m is not None:
             version = m.group(1)
